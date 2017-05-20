@@ -1,0 +1,151 @@
+# -*- coding: utf-8 -*-
+import os
+from py_s3_cache import Cache
+from leafpy import Leaf
+import time
+import arrow
+from boto3 import client as boto3_client
+import boto3
+import json
+
+_MILES_PER_METER = 0.000621371
+
+bucket = os.getenv('bucket')
+prefix = os.getenv('prefix')
+cacheprefix = prefix + 'cache'
+cache = Cache(bucket,cacheprefix)
+
+def handler(event, context):
+
+    print event
+    print context
+
+    # try:
+    # PERIODIC UPDATE
+    if event.get('detail-type') == 'Scheduled Event':
+        print "doing periodic update (or async)"
+        get_and_cache_leaf_data()
+        return lambdaresponse('Update',"I am getting data from your Nissan Leaf.")
+
+    # direct invoke to preheat asynchronously
+    if event.get('detail-type') == 'preheat':
+        print "preheat"
+        leaf = getleaf()
+        leaf.ACRemoteRequest()  # fire and forget
+        return "did async preheat call"
+
+    # Preheat
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'PreheatIntent':
+        msg = {'detail-type':'preheat'}
+        launch_lambda(context.function_name, msg)
+        return lambdaresponse('Update',"Sure, I'm cranking up the heat in your Nissan Leaf.")
+
+    # Please update
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'UpdateIntent':
+        msg = {'detail-type':'Scheduled Event'}
+        launch_lambda(context.function_name, msg)
+        return lambdaresponse('Update',"I am getting data from your Nissan Leaf.  It will take about 30 seconds.")
+        
+
+    # How much battery do I have left
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'ChargeIntent':
+        data = cache.get('leafdata')
+        response_str = 'Your leaf has %s percent battery remaining.' % data.get('percent')
+        return lambdaresponse('Battery Remaining',response_str)
+
+    # Is it plugged in
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'ConnectedIntent':
+        data = cache.get('leafdata')
+        if data.get('connected'):
+            return lambdaresponse('Plugged in','Your leaf is currently plugged in.')
+        else:
+            return lambdaresponse('Not Plugged in','Your leaf is not plugged in.')
+        
+    # How far can I drive
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'RangeIntent':
+        data = cache.get('leafdata')
+        response_str = 'Your leaf can go %s miles on its current charge of %s percent battery capacity.' % (data.get('distance'), data.get('percent'))
+        return lambdaresponse('Driving Range',response_str)
+
+    # is it charging
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'ChargingIntent':
+        data = cache.get('leafdata')
+        if data.get('charging'):
+            return lambdaresponse('Charging','Your leaf is currently charging.')
+        else:
+            return lambdaresponse('Not Charging','Your leaf is not charging.')
+
+
+            
+
+    # except Exception as e:
+    #     return lambdaresponse('Error',str(e))
+
+def get_and_cache_leaf_data():
+    leaf = getleaf()
+    response = leaf.BatteryStatusCheckRequest()
+
+    while True:
+        time.sleep(5)
+        r = leaf.BatteryStatusCheckResultRequest(resultKey=response['resultKey'])
+        if r.get('responseFlag') == '1':
+            break
+
+    response = leaf.BatteryStatusRecordsRequest()
+
+    data = {
+        'charging': response['BatteryStatusRecords']['BatteryStatus']['BatteryChargingStatus'] != 'NOT_CHARGING',
+        'connected': response['BatteryStatusRecords']['PluginState'] == 'CONNECTED',
+        'percent': int(response['BatteryStatusRecords']['BatteryStatus']['SOC']['Value']),
+        'distance': int(( int(response['BatteryStatusRecords']['CruisingRangeAcOn']) ) * _MILES_PER_METER),
+        'timestamp': str(arrow.utcnow())
+    }
+
+    cache.set('leafdata',data)
+
+    # now save the data in s3 for future analysis
+    s3 = boto3.resource('s3')
+    obj = s3.Object(bucket,prefix + '/data/' + str(data['timestamp']) + '.txt')
+    datastr = data['timestamp'] + ',' + str(data['percent']) + ',' + str(data['distance']) + ',' + str(data['charging'])+ ',' + str(data['connected'])
+    obj.put(Body=datastr)
+
+def getleaf():
+    username = os.getenv('username')
+    password = os.getenv('password')
+    leaf = cache.get('leaf')
+    if not leaf:
+        leaf = Leaf(username, password)
+
+    # Make sure the leaf custom_sessionid is valid
+    try:
+        leaf.BatteryStatusRecordsRequest()
+    except:
+        leaf = Leaf(username, password)
+
+    cache.set('leaf',leaf)
+    return leaf
+
+def launch_lambda(function_name, msg):
+    """
+    Fire and forget invoking this lambda so we can respond to the user without waiting.
+    """
+    # func_name: context.function_name
+    lambda_client = boto3_client('lambda','us-east-1')
+    invoke_response = lambda_client.invoke(FunctionName=function_name,InvocationType='Event',Payload=json.dumps(msg))
+
+def lambdaresponse(title, text):
+    return {
+      "version": "1.0",
+      "response": {
+        "outputSpeech": {
+          "type": "PlainText",
+          "text": text
+        },
+        "card": {
+          "content": text,
+          "title": title,
+          "type": "Simple"
+        }
+      },
+      "sessionAttributes": {}
+    }

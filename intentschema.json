@@ -1,0 +1,40 @@
+{
+  "intents": [
+    {
+      "intent": "PreheatIntent"
+    },
+    {
+      "intent": "CoolingIntent"
+    },
+    {
+      "intent": "ClimateControlOffIntent"
+    },
+    {
+      "intent": "UpdateIntent"
+    },
+    {
+      "intent": "RangeIntent"
+    },
+    {
+      "intent": "ChargeIntent"
+    },
+    {
+      "intent": "ChargingIntent"
+    },
+    {
+      "intent": "ConnectedIntent"
+    },
+    {
+      "intent": "StartChargingIntent"
+    },
+    {
+      "intent": "AMAZON.HelpIntent"
+    },
+    {
+      "intent": "AMAZON.CancelIntent"
+    },
+    {
+      "intent": "AMAZON.StopIntent"
+    }
+  ]
+}

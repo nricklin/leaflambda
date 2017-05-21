@@ -1,3 +1,4 @@
 leafpy
 py-s3-cache
 arrow
+requests

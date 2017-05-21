@@ -7,6 +7,7 @@ import arrow
 from boto3 import client as boto3_client
 import boto3
 import json
+import requests
 
 _MILES_PER_METER = 0.000621371
 
@@ -20,7 +21,6 @@ def handler(event, context):
     print event
     print context
 
-    # try:
     # PERIODIC UPDATE
     if event.get('detail-type') == 'Scheduled Event':
         print "doing periodic update (or async)"
@@ -46,6 +46,17 @@ def handler(event, context):
         launch_lambda(context.function_name, msg)
         return lambdaresponse('Update',"I am getting data from your Nissan Leaf.  It will take about 30 seconds.")
         
+    # Where is my nissan leaf
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'LocationIntent':
+        data = cache.get('leafdata')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s" % (lat,lng)
+        print url
+        r = requests.get(url)
+        print r.text
+        location_str = r.json()['results'][0]['formatted_address']
+        return lambdaresponse('Location',"Your Leaf is located at "+location_str)
 
     # How much battery do I have left
     if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'ChargeIntent':
@@ -76,10 +87,6 @@ def handler(event, context):
             return lambdaresponse('Not Charging','Your leaf is not charging.')
 
 
-            
-
-    # except Exception as e:
-    #     return lambdaresponse('Error',str(e))
 
 def get_and_cache_leaf_data():
     leaf = getleaf()
@@ -101,12 +108,18 @@ def get_and_cache_leaf_data():
         'timestamp': str(arrow.utcnow())
     }
 
+    # Now get leaf location (this is a pretty quick request)
+    response = leaf.MyCarFinderLatLng()
+    data['lat'] = float(response.get('lat'))
+    data['lng'] = float(response.get('lng'))
+
     cache.set('leafdata',data)
 
-    # now save the data in s3 for future analysis
+    # now additionally save the data in s3 as a record for future analysis with AWS Athena
     s3 = boto3.resource('s3')
     obj = s3.Object(bucket,prefix + '/data/' + str(data['timestamp']) + '.txt')
     datastr = data['timestamp'] + ',' + str(data['percent']) + ',' + str(data['distance']) + ',' + str(data['charging'])+ ',' + str(data['connected'])
+    datastr = datastr + ',' + str(data['lat']) + ',' + str(data['lng'])
     obj.put(Body=datastr)
 
 def getleaf():

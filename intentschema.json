@@ -7,6 +7,9 @@
       "intent": "CoolingIntent"
     },
     {
+      "intent": "LocationIntent"
+    },
+    {
       "intent": "ClimateControlOffIntent"
     },
     {

@@ -90,11 +90,20 @@ def handler(event, context):
 
 def get_and_cache_leaf_data():
     leaf = getleaf()
-    response = leaf.BatteryStatusCheckRequest()
+    response = leaf.BatteryStatusCheckRequest()   # Send an async battery status request
+    location_response = leaf.MyCarFinderRequest() # Send an async car location request
 
+    # wait for battery status async request to finish
     while True:
         time.sleep(5)
         r = leaf.BatteryStatusCheckResultRequest(resultKey=response['resultKey'])
+        if r.get('responseFlag') == '1':
+            break
+
+    # wait for position status async request to finish
+    while True:
+        time.sleep(5)
+        r = leaf.MyCarFinderResultRequest(resultKey=location_response['resultKey'])
         if r.get('responseFlag') == '1':
             break
 
@@ -117,8 +126,8 @@ def get_and_cache_leaf_data():
 
     # now additionally save the data in s3 as a record for future analysis with AWS Athena
     s3 = boto3.resource('s3')
-    obj = s3.Object(bucket,prefix + '/data/' + str(data['timestamp']) + '.txt')
-    datastr = data['timestamp'] + ',' + str(data['percent']) + ',' + str(data['distance']) + ',' + str(data['charging'])+ ',' + str(data['connected'])
+    obj = s3.Object(bucket,prefix + '/data/' + str(data['timestamp'].replace('T',' ')) + '.txt')
+    datastr = data['timestamp'].replace('T',' ') + ',' + str(data['percent']) + ',' + str(data['distance']) + ',' + str(data['charging'])+ ',' + str(data['connected'])
     datastr = datastr + ',' + str(data['lat']) + ',' + str(data['lng'])
     obj.put(Body=datastr)
 

@@ -34,11 +34,49 @@ def handler(event, context):
         leaf.ACRemoteRequest()  # fire and forget
         return "did async preheat call"
 
+    # direct the climate control to turn off
+    if event.get('detail-type') == 'heatoff':
+        print "heatoff"
+        leaf = getleaf()
+        leaf.ACRemoteOffRequest()  # fire and forget
+        return "did async heatoff call"
+
+    # direct the leaf to begin charging
+    if event.get('detail-type') == 'startcharging':
+        print "startcharging"
+        leaf = getleaf()
+        leaf.BatteryRemoteChargingRequest()  # fire and forget
+        return "did async startcharging call"
+
     # Preheat
     if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'PreheatIntent':
         msg = {'detail-type':'preheat'}
         launch_lambda(context.function_name, msg)
         return lambdaresponse('Update',"Sure, I'm cranking up the heat in your Nissan Leaf.")
+
+    # CoolAC
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'CoolingIntent':
+        msg = {'detail-type':'preheat'}
+        launch_lambda(context.function_name, msg)
+        return lambdaresponse('Update',"Yeah!  I'm turning on the AC.  Prepare to be mega chilled.")
+
+    # HeatOff
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'HeatOffIntent':
+        msg = {'detail-type':'heatoff'}
+        launch_lambda(context.function_name, msg)
+        return lambdaresponse('Update',"Okay okay.  I'm turning off the heat.")
+
+    # AC Off
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'CoolOffIntent':
+        msg = {'detail-type':'heatoff'}
+        launch_lambda(context.function_name, msg)
+        return lambdaresponse('Update',"I'm turning off the Air Conditioner.")
+
+    # Start Charging
+    if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'StartChargingIntent':
+        msg = {'detail-type':'startcharging'}
+        launch_lambda(context.function_name, msg)
+        return lambdaresponse('Update',"Okay I'll start charging your leaf.")
 
     # Please update
     if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'UpdateIntent':

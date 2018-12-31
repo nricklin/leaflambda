@@ -131,8 +131,9 @@ def get_and_cache_leaf_data():
     response = leaf.BatteryStatusCheckRequest()   # Send an async battery status request
     location_response = leaf.MyCarFinderRequest() # Send an async car location request
 
-    # wait for battery status async request to finish
-    while True:
+    timeout_start = time.time()
+    # wait maximum of 2 minutes for battery status async request to finish
+    while time.time() < timeout_start + 120:
         time.sleep(5)
         r = leaf.BatteryStatusCheckResultRequest(resultKey=response['resultKey'])
         if r.get('responseFlag') == '1':

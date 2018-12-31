@@ -1,4 +1,4 @@
-leafpy>=0.2.2
+leafpy>=0.2.4
 py-s3-cache
 arrow
 requests

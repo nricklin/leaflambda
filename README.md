@@ -27,10 +27,10 @@ There are a few manual steps to get this working, but I've created a terraform s
    The S3 bucket is used as both a cache for current leaf state so latency is low on requests, as well as saving a log of your Nissan Leaf status every hour
 
 4. Run `./terraform apply`.  This will setup several things in AWS:
-..* Create an S3 bucket for the cache
-..* Create an IAM role for lambda execution with several permissions that it needs
-..* Create a lambda function and upload `deploy.zip` into it
-..* Create a cloudwatch event that triggers the lambda to run every hour
+  * Create an S3 bucket for the cache
+  * Create an IAM role for lambda execution with several permissions that it needs
+  * Create a lambda function and upload `deploy.zip` into it
+  * Create a cloudwatch event that triggers the lambda to run every hour
 
 At this point the lambda will be collecting data from your Leaf every hour (stored as logfiles in S3), and you can analyze it for example with AWS Athena (see `aws_athena_hive_query.txt` for how to set that up).
 

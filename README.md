@@ -24,7 +24,7 @@ There are a few manual steps to get this working, but I've created a terraform s
 2. Get terraform (https://learn.hashicorp.com/terraform/getting-started/install.html)
 3. Edit the `variables.tf` file with your nissan username & password, and the name of a new S3 bucket to be created.
 
-...(The S3 bucket is used as both a cache for current leaf state so latency is low on requests, as well as saving a log of your Nissan Leaf status every hour)
+   The S3 bucket is used as both a cache for current leaf state so latency is low on requests, as well as saving a log of your Nissan Leaf status every hour
 
 4. Run `./terraform apply`.  This will setup several things in AWS:
 ..* Create an S3 bucket for the cache

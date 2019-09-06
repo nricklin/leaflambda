@@ -159,7 +159,7 @@ def get_and_cache_leaf_data():
     }
 
     # Now get leaf location (this is a pretty quick request)
-    response = leaf.MyCarFinderLatLng()
+    #response = leaf.MyCarFinderLatLng()
     data['lat'] = 0.0 #float(response.get('lat'))
     data['lng'] = 0.0 #float(response.get('lng'))
 

@@ -86,15 +86,15 @@ def handler(event, context):
         
     # Where is my nissan leaf
     if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'LocationIntent':
-        data = cache.get('leafdata')
-        lat = data.get('lat')
-        lng = data.get('lng')
-        url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s" % (lat,lng)
-        print url
-        r = requests.get(url)
-        print r.text
-        location_str = r.json()['results'][0]['formatted_address']
-        return lambdaresponse('Location',"Your Leaf is located at "+location_str)
+        #data = cache.get('leafdata')
+        #lat = data.get('lat')
+        #lng = data.get('lng')
+        #url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s" % (lat,lng)
+        #print url
+        #r = requests.get(url)
+        #print r.text
+        #location_str = r.json()['results'][0]['formatted_address']
+        return lambdaresponse('Location',"The location API appears to have been removed.  Sorry.  Your leaf is on planet earth.")
 
     # How much battery do I have left
     if event.get('request').get('type') == 'IntentRequest' and event['request']['intent']['name'] == 'ChargeIntent':
@@ -129,7 +129,9 @@ def handler(event, context):
 def get_and_cache_leaf_data():
     leaf = getleaf()
     response = leaf.BatteryStatusCheckRequest()   # Send an async battery status request
-    location_response = leaf.MyCarFinderRequest() # Send an async car location request
+
+    # Location seems to have been deprecated, so don't do it.
+    #location_response = leaf.MyCarFinderRequest() # Send an async car location request
 
     timeout_start = time.time()
     # wait maximum of 2 minutes for battery status async request to finish
@@ -140,11 +142,11 @@ def get_and_cache_leaf_data():
             break
 
     # wait for position status async request to finish
-    while True:
-        time.sleep(5)
-        r = leaf.MyCarFinderResultRequest(resultKey=location_response['resultKey'])
-        if r.get('responseFlag') == '1':
-            break
+    # while True:
+    #     time.sleep(5)
+    #     r = leaf.MyCarFinderResultRequest(resultKey=location_response['resultKey'])
+    #     if r.get('responseFlag') == '1':
+    #         break
 
     response = leaf.BatteryStatusRecordsRequest()
 
@@ -158,8 +160,8 @@ def get_and_cache_leaf_data():
 
     # Now get leaf location (this is a pretty quick request)
     response = leaf.MyCarFinderLatLng()
-    data['lat'] = float(response.get('lat'))
-    data['lng'] = float(response.get('lng'))
+    data['lat'] = 0.0 #float(response.get('lat'))
+    data['lng'] = 0.0 #float(response.get('lng'))
 
     cache.set('leafdata',data)
 
